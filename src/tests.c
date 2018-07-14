@@ -3985,8 +3985,8 @@ void test_ecdsa_end_to_end(void) {
     unsigned char privkey[32];
     unsigned char message[32];
     unsigned char privkey2[32];
-    secp256k1_ecdsa_signature signature[6];
-    secp256k1_scalar r, s;
+    secp256k1_ecdsa_signature signature[7];
+    secp256k1_scalar r, s, r1;
     unsigned char sig[74];
     size_t siglen = 74;
     unsigned char pubkeyc[65];
@@ -4097,6 +4097,21 @@ void test_ecdsa_end_to_end(void) {
     CHECK(!secp256k1_ecdsa_signature_normalize(ctx, NULL, &signature[5]));
     CHECK(secp256k1_ecdsa_verify(ctx, &signature[5], message, &pubkey) == 1);
     CHECK(memcmp(&signature[5], &signature[0], 64) == 0);
+
+    /* Test lower-R form determinism */
+    CHECK(secp256k1_ecdsa_sign(ctx, &signature[6], message, privkey, NULL, NULL));
+    secp256k1_ecdsa_signature_load(ctx, &r, &s, &signature[6]);
+    while (secp256k1_scalar_is_high(&r)) {
+        secp256k1_scalar key;
+        random_scalar_order_test(&key);
+        secp256k1_scalar_get_b32(privkey, &key);
+        CHECK(secp256k1_ecdsa_sign(ctx, &signature[6], message, privkey, NULL, NULL));
+        secp256k1_ecdsa_signature_load(ctx, &r, &s, &signature[6]);
+    }
+    CHECK(secp256k1_ecdsa_sign_low_r(ctx, &signature[6], message, privkey, NULL, NULL));
+    secp256k1_ecdsa_signature_load(ctx, &r1, &s, &signature[6]);
+    CHECK(!secp256k1_scalar_is_high(&r1));
+    CHECK(secp256k1_scalar_eq(&r, &r1));
 
     /* Serialize/parse DER and verify again */
     CHECK(secp256k1_ecdsa_signature_serialize_der(ctx, sig, &siglen, &signature[0]) == 1);

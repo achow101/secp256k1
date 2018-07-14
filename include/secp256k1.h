@@ -501,6 +501,35 @@ SECP256K1_API int secp256k1_ecdsa_sign(
     const void *ndata
 ) SECP256K1_ARG_NONNULL(1) SECP256K1_ARG_NONNULL(2) SECP256K1_ARG_NONNULL(3) SECP256K1_ARG_NONNULL(4);
 
+/** Create an ECDSA signature with low R value.
+ *
+ *  Returns: 1: signature created
+ *           0: the nonce generation function failed, or the private key was invalid.
+ *  Args:    ctx:    pointer to a context object, initialized for signing (cannot be NULL)
+ *  Out:     sig:    pointer to an array where the signature will be placed (cannot be NULL)
+ *  In:      msg32:  the 32-byte message hash being signed (cannot be NULL)
+ *           seckey: pointer to a 32-byte secret key (cannot be NULL)
+ *           noncefp:pointer to a nonce generation function. If NULL, secp256k1_nonce_function_default is used
+ *           ndata:  pointer to arbitrary data used by the nonce generation function (can be NULL)
+ *
+ * The created signature is always in lower-S form. See
+ * secp256k1_ecdsa_signature_normalize for more details.
+ *
+ * The created signature is always in lower-R form. Unlike lower-S form,
+ * lower-R needs to be calculated by trying different nonce values until
+ * a signature is created with a lower-R. This take two tries on average.
+ * The resulting transaction will be half a byte smaller on average than
+ * without lower-R.
+ */
+SECP256K1_API int secp256k1_ecdsa_sign_low_r(
+    const secp256k1_context* ctx,
+    secp256k1_ecdsa_signature *sig,
+    const unsigned char *msg32,
+    const unsigned char *seckey,
+    secp256k1_nonce_function noncefp,
+    const void *ndata
+) SECP256K1_ARG_NONNULL(1) SECP256K1_ARG_NONNULL(2) SECP256K1_ARG_NONNULL(3) SECP256K1_ARG_NONNULL(4);
+
 /** Verify an ECDSA secret key.
  *
  *  Returns: 1: secret key is valid

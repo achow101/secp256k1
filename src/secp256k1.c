@@ -409,6 +409,24 @@ int secp256k1_ecdsa_sign(const secp256k1_context* ctx, secp256k1_ecdsa_signature
     return ret;
 }
 
+int secp256k1_ecdsa_sign_low_r(const secp256k1_context* ctx, secp256k1_ecdsa_signature *signature, const unsigned char *msg32, const unsigned char *seckey, secp256k1_nonce_function noncefp, const void* noncedata) {
+    unsigned char nonce32[32];
+    secp256k1_scalar r, s;
+    int ret = 0;
+
+    /* Create a signature and retrieve the nonce. The first time, use noncedata */
+    ret = secp256k1_ecdsa_sign_get_nonce(ctx, signature, nonce32, msg32, seckey, noncefp, noncedata);
+    secp256k1_ecdsa_signature_load(ctx, &r, &s, signature);
+
+    /* While R is large, keep getting new signatures */
+    while (ret && secp256k1_scalar_is_high(&r)) {
+        ret &= secp256k1_ecdsa_sign_get_nonce(ctx, signature, nonce32, msg32, seckey, noncefp, nonce32);
+        secp256k1_ecdsa_signature_load(ctx, &r, &s, signature);
+    }
+    memset(nonce32, 0, 32);
+    return ret;
+}
+
 int secp256k1_ec_seckey_verify(const secp256k1_context* ctx, const unsigned char *seckey) {
     secp256k1_scalar sec;
     int ret;
